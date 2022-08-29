@@ -1,6 +1,7 @@
 plugins {
     id 'org.jetbrains.intellij' version '1.8.0' //1.8.0?
     id 'java'
+    id "de.undercouch.download" version "5.1.2"
 }
 
 group 'org.dochub.idea'
@@ -16,6 +17,21 @@ jar {
     manifest {
         attributes("PLANTUML_LIMIT_SIZE": "24384")
     }
+}
+
+processResources {
+    exclude('html/*.zip')
+}
+
+task downloadZipFile(type: Download) {
+    src 'https://github.com/agaydenger/DocHub/releases/download/v1.0-alpha/plugin.zip'
+    dest new File('src/main/resources/html/plugin.zip')
+    onlyIfModified true
+}
+
+task downloadAndUnzipFile(dependsOn: downloadZipFile, type: Copy) {
+    from zipTree(downloadZipFile.dest)
+    into new File('src/main/resources/html/')
 }
 
 dependencies {
