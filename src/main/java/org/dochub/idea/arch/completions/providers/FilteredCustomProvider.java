@@ -12,6 +12,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 import org.dochub.idea.arch.completions.CompletionKey;
 import org.dochub.idea.arch.completions.FormattingInsertHandler;
+import org.dochub.idea.arch.utils.PsiUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLMapping;
@@ -21,7 +22,6 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public abstract class FilteredCustomProvider extends CustomProvider {
 
@@ -54,7 +54,7 @@ public abstract class FilteredCustomProvider extends CustomProvider {
                         // Тут возможны 2 варианта, либо наш родитель содержит уже филды, либо это просто имя компонента
                         // Если containerToScan != null значит есть хоть 1 поле
                         Set<String> alreadyDefinedAttributes = Optional.ofNullable(containerToScan)
-                                .map(c -> getChildsOfClass(c, YAMLKeyValue.class).stream()
+                                .map(c -> PsiUtils.getChildrenOfClass(c, YAMLKeyValue.class)
                                         .map(YAMLKeyValue::getKeyText).collect(Collectors.toSet()))
                                 .orElse(Collections.emptySet());
 
@@ -69,10 +69,6 @@ public abstract class FilteredCustomProvider extends CustomProvider {
     private LookupElementBuilder createLookupElement(CompletionKey key) {
         return LookupElementBuilder.create(key.getKey())
                 .withInsertHandler(new FormattingInsertHandler(key, getKeyDocumentLevel()));
-    }
-
-    private <T extends PsiElement> Collection<T> getChildsOfClass(PsiElement parent, Class<T> classz) {
-        return Stream.of(parent.getChildren()).filter(classz::isInstance).map(classz::cast).collect(Collectors.toSet());
     }
 
 }

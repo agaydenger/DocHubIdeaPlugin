@@ -2,13 +2,18 @@ package org.dochub.idea.arch.utils;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ObjectUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.yaml.psi.YAMLDocument;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.util.*;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class SuggestUtils {
     public static List<String> scanDirByContext(String basePath, String context, String[] extensions) {
@@ -78,24 +83,12 @@ public class SuggestUtils {
         return result;
     }
 
-    public static List<String> scanYamlPsiTreeToID(PsiElement document, String section) {
-        List<String> result = new ArrayList<>();
-        PsiElement[] yamlSections = document.getFirstChild().getChildren();
-        for (PsiElement yamlSection : yamlSections) {
-            YAMLKeyValue yamlKey = ObjectUtils.tryCast(yamlSection,  YAMLKeyValue.class);
-            if (yamlKey != null && PsiUtils.getText(yamlKey.getKey()).equals(section)) {
-                PsiElement[] yamlIDs = yamlSection.getLastChild().getChildren();
-                for (PsiElement id : yamlIDs ) {
-                    YAMLKeyValue yamlID = ObjectUtils.tryCast(id,  YAMLKeyValue.class);
-                    if (yamlID != null) {
-                        // appendDividerItem(result, PsiUtils.getText(yamlID.getKey()), context, ".");
-                        result.add(PsiUtils.getText(yamlID.getKey()));
-                    }
-                }
-            }
-        }
-
-        return result;
+    public static @NotNull Set<String> scanYamlPsiTreeToID(@NotNull PsiElement document, @NotNull String section,@NotNull Function<PsiElement, Set<String>> idsExtractor) {
+        return PsiTreeUtil.getChildrenOfTypeAsList(document.getFirstChild(), YAMLKeyValue.class).stream()
+                .filter(kv -> section.equals(kv.getKeyText()))
+                .map(PsiElement::getLastChild)
+                .flatMap(v -> idsExtractor.apply(v).stream())
+                .collect(Collectors.toSet());
     }
 
     public static List<String> scanYamlPsiTreeToLocation(PsiElement element, String section) {

@@ -11,14 +11,21 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiModificationTracker;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 import org.dochub.idea.arch.indexing.CacheBuilder;
 import org.dochub.idea.arch.utils.PsiUtils;
 import org.dochub.idea.arch.utils.SuggestUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.yaml.psi.YAMLKeyValue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class IDSuggest extends BaseSuggest {
     protected ElementPattern<? extends PsiElement> getPattern() {
@@ -33,6 +40,13 @@ public class IDSuggest extends BaseSuggest {
 
     public IDSuggest() {
         cacheSectionKey = Key.create(getSection() + "-ids");
+    }
+
+    protected Function<PsiElement, Set<String>> getIdsExtractor() {
+        return psiElement ->
+                PsiUtils.getChildrenOfClass(psiElement, YAMLKeyValue.class)
+                        .map(YAMLKeyValue::getKeyText)
+                        .filter(Objects::nonNull).collect(Collectors.toSet());
     }
 
     @Override
@@ -50,19 +64,16 @@ public class IDSuggest extends BaseSuggest {
 
                         CachedValuesManager cacheManager = CachedValuesManager.getManager(project);
 
-                        List<String> ids =  cacheManager.getCachedValue(
+                        Set<String> ids =  cacheManager.getCachedValue(
                                 parameters.getOriginalFile(),
                                 cacheSectionKey,
                                 () -> {
-                                    List<String> suggest = SuggestUtils.scanYamlPsiTreeToID(document, getSection());
+                                    Set<String> suggest = SuggestUtils.scanYamlPsiTreeToID(document, getSection(), getIdsExtractor());
                                     Map<String, CacheBuilder.SectionData> globalCache = getProjectCache(project);
                                     if (globalCache != null) {
                                         CacheBuilder.SectionData section = globalCache.get(getSection());
                                         if (section != null) {
-                                            for (String id : section.ids.keySet()) {
-                                                if (suggest.indexOf(id) < 0)
-                                                    suggest.add(id);
-                                            }
+                                            suggest.addAll(section.ids.keySet());
                                         }
                                     }
 

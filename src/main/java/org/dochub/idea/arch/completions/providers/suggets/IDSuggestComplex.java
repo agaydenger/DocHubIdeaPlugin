@@ -11,15 +11,23 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiModificationTracker;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 import org.dochub.idea.arch.indexing.CacheBuilder;
 import org.dochub.idea.arch.utils.PsiUtils;
 import org.dochub.idea.arch.utils.SuggestUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.yaml.psi.YAMLKeyValue;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class IDSuggestComplex extends BaseSuggest {
     protected ElementPattern<? extends PsiElement> getPattern() {
@@ -30,6 +38,15 @@ public class IDSuggestComplex extends BaseSuggest {
         return new String[]{};
     }
     private Key cacheSectionKey = Key.create("$complex-ids");
+
+
+    protected Function<PsiElement, Set<String>> getIdsExtractor() {
+        return psiElement ->
+                PsiUtils.getChildrenOfClass(psiElement, YAMLKeyValue.class)
+                        .map(YAMLKeyValue::getKeyText)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+    }
 
     @Override
     public void appendToCompletion(CompletionContributor completion) {
@@ -46,25 +63,18 @@ public class IDSuggestComplex extends BaseSuggest {
 
                         CachedValuesManager cacheManager = CachedValuesManager.getManager(project);
 
-                        List<String> ids =  cacheManager.getCachedValue(
+                        Set<String> ids =  cacheManager.getCachedValue(
                                 parameters.getOriginalFile(),
                                 cacheSectionKey,
                                 () -> {
-                                    List<String> suggest = new ArrayList<>();
+                                    Set<String> suggest = new HashSet<>();
                                     Map<String, CacheBuilder.SectionData> globalCache = getProjectCache(project);
                                     if (globalCache != null) {
                                         for (String section: getSections()) {
-                                            List<String> localIds = SuggestUtils.scanYamlPsiTreeToID(document, section);
-                                            for (String id: localIds)
-                                                if (suggest.indexOf(id) < 0)
-                                                    suggest.add(id);
+                                            Set<String> localIds = SuggestUtils.scanYamlPsiTreeToID(document, section, getIdsExtractor());
+                                            suggest.addAll(localIds);
                                             CacheBuilder.SectionData projectIds = globalCache.get(section);
-                                            if (section != null) {
-                                                for (String id : projectIds.ids.keySet()) {
-                                                    if(suggest.indexOf(id) < 0)
-                                                        suggest.add(id);
-                                                }
-                                            }
+                                            suggest.addAll(projectIds.ids.keySet());
                                         }
                                     }
 

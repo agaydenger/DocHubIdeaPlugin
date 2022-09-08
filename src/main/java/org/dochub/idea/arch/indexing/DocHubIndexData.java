@@ -8,9 +8,12 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 public final class DocHubIndexData extends HashMap<String, DocHubIndexData.Section> {
 
@@ -138,6 +141,21 @@ public final class DocHubIndexData extends HashMap<String, DocHubIndexData.Secti
         } catch (ClassCastException e) {}
     }
 
+    public void makeTechnologiesCache(Map<String, Object> yaml) {
+        Section secData = new Section();
+        try {
+            Map<String, Object> content = (Map<String, Object>) yaml.get("technologies");
+            if (content != null) {
+                Set<String> technologies = Optional.ofNullable(content.get("items"))
+                        .map(i -> (Map<String, Object>) i)
+                        .map(Map::keySet)
+                        .orElseGet(Collections::emptySet);
+                secData.ids.addAll(technologies);
+                this.put("technologies", secData);
+            }
+        } catch (ClassCastException e) {}
+    }
+
     public void makeCacheDataManifest(PsiFile file) {
         VirtualFile vFile = file.getVirtualFile();
         if (vFile != null) {
@@ -153,6 +171,7 @@ public final class DocHubIndexData extends HashMap<String, DocHubIndexData.Secti
                     makeCacheDataSection(sections, "contexts");
                     makeCacheDataSection(sections, "docs");
                     makeCacheDataSection(sections, "datasets");
+                    makeTechnologiesCache(sections);
                 }
             } catch (Exception e) {}
         }

@@ -34,6 +34,7 @@ public class YamlCompletion extends CompletionContributor {
                     new ComponentLinksDirection(),
                 new ComponentAspects(),
                 new ComponentContractID(),
+                new ComponentTechnologies(),
             new Forms(),
                 new FormItem(),
                     new FormItemField(),
