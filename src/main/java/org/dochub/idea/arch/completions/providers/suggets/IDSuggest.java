@@ -13,6 +13,7 @@ import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
+import org.dochub.idea.arch.completions.filters.IDSuggestionFilter;
 import org.dochub.idea.arch.indexing.CacheBuilder;
 import org.dochub.idea.arch.utils.PsiUtils;
 import org.dochub.idea.arch.utils.SuggestUtils;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -47,6 +49,10 @@ public class IDSuggest extends BaseSuggest {
                 PsiUtils.getChildrenOfClass(psiElement, YAMLKeyValue.class)
                         .map(YAMLKeyValue::getKeyText)
                         .filter(Objects::nonNull).collect(Collectors.toSet());
+    }
+
+    protected IDSuggestionFilter getFilterForAlreadyExistsKeys() {
+        return IDSuggestionFilter.DEFAULT;
     }
 
     @Override
@@ -85,9 +91,8 @@ public class IDSuggest extends BaseSuggest {
                                 }
                         );
 
-                        for (String id : ids) {
-                            resultSet.addElement(LookupElementBuilder.create(id));
-                        }
+                        getFilterForAlreadyExistsKeys().apply(PsiTreeUtil.getParentOfType(parameters.getPosition(), YAMLKeyValue.class), ids)
+                                .forEach(id -> resultSet.addElement(LookupElementBuilder.create(id)));
                     }
                 }
         );

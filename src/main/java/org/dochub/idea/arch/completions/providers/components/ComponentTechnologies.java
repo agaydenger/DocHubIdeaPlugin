@@ -3,6 +3,8 @@ package org.dochub.idea.arch.completions.providers.components;
 import com.intellij.patterns.ElementPattern;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.PsiElement;
+import org.dochub.idea.arch.completions.filters.IDSuggestionFilter;
+import org.dochub.idea.arch.completions.filters.KeysAlreadyInListFilter;
 import org.dochub.idea.arch.completions.providers.Components;
 import org.dochub.idea.arch.completions.providers.suggets.IDSuggest;
 import org.dochub.idea.arch.utils.PsiUtils;
@@ -31,6 +33,11 @@ public class ComponentTechnologies extends IDSuggest {
     @Override
     protected String getSection() {
         return "technologies";
+    }
+
+    @Override
+    protected IDSuggestionFilter getFilterForAlreadyExistsKeys() {
+        return new KeysAlreadyInListFilter();
     }
 
     @Override
