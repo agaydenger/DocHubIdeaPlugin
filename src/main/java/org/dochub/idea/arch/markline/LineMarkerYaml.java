@@ -92,7 +92,7 @@ public class LineMarkerYaml extends LineMarkerProviderDescriptor {
             public DocHubNavigationHandler register(String id) {
                 return new DocHubNavigationHandler("document", id);
             }
-        }, "documents");
+        }, "docs");
     }
 
     private LineMarkerInfo getLineMarkerInfoForAspect(@NotNull PsiElement element) {
