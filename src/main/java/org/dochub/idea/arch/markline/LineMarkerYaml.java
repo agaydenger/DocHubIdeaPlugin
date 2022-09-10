@@ -1,11 +1,11 @@
 package org.dochub.idea.arch.markline;
 
-import com.intellij.codeInsight.daemon.*;
-import com.intellij.icons.AllIcons;
-import com.intellij.openapi.editor.markup.GutterIconRenderer;
+import com.intellij.codeInsight.daemon.LineMarkerInfo;
+import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor;
+import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
-import com.intellij.util.Function;
-import com.intellij.util.messages.Topic;
+import org.dochub.idea.arch.indexing.CacheBuilder;
 import org.dochub.idea.arch.references.providers.RefAspectID;
 import org.dochub.idea.arch.references.providers.RefComponentID;
 import org.dochub.idea.arch.references.providers.RefContextID;
@@ -14,12 +14,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl;
 
-import java.awt.event.MouseEvent;
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.Optional;
 
-import static org.dochub.idea.arch.markline.LineMarkerNavigator.*;
+import static org.dochub.idea.arch.markline.LineMarkerNavigator.DocHubNavigationHandler;
+import static org.dochub.idea.arch.markline.LineMarkerNavigator.makeLineMarkerInfo;
 
 public class LineMarkerYaml extends LineMarkerProviderDescriptor {
 
@@ -42,37 +42,26 @@ public class LineMarkerYaml extends LineMarkerProviderDescriptor {
         return null;
     }
 
-    private boolean isRegisteredComponent(@NotNull PsiElement element, String id) {
-//        Map<String, Object> cache = CacheBuilder.getProjectCache(element.getProject());
-//        Map<String, Object> components = cache == null ? null : (Map<String, Object>) cache.get("components");
-//        PsiElement document = PsiUtils.getYamlDocumentByPsiElement(element);
-//        List<String> suggest = SuggestUtils.scanYamlPsiTreeToID(document, "components");
-//        return components.get(id) != null || (suggest.indexOf(id) >= 0);
-        return true; // todo Здесь нужно проверять на действительную регистрацию компонента
-    }
-
-    private boolean isRegisteredDocument(@NotNull PsiElement element, String id) {
-        return true; // todo Здесь нужно проверять на действительную регистрацию компонента
-    }
-
     public interface ElementExplain {
         default LineMarkerNavigator.DocHubNavigationHandler register(String id) {
             return null;
-        };
+        }
+
+        ;
     }
 
-    public LineMarkerInfo explainElement(@NotNull PsiElement element, ElementExplain explain) {
+    private LineMarkerInfo explainElement(@NotNull PsiElement element, ElementExplain explain, String cacheName) {
         LineMarkerInfo result = null;
         String id = null;
         PsiElement markElement = element;
         if (element instanceof YAMLKeyValue) {
             markElement = element.getFirstChild();
-            id = ((YAMLKeyValue)element).getName();
+            id = ((YAMLKeyValue) element).getName();
         } else if (element instanceof YAMLPlainTextImpl) {
             markElement = element.getFirstChild();
             id = element.getText();
         }
-        if (id != null && isRegisteredComponent(element, id)) {
+        if (id != null && isRegisteredStructure(cacheName, id, element.getProject())) {
             result = makeLineMarkerInfo(
                     explain.register(id),
                     markElement
@@ -81,13 +70,20 @@ public class LineMarkerYaml extends LineMarkerProviderDescriptor {
         return result;
     }
 
+    private boolean isRegisteredStructure(String cacheName, String id, Project project) {
+        return Optional.ofNullable(CacheBuilder.getProjectCache(project))
+                .map(c -> c.get(cacheName))
+                .map(c -> c.ids.get(id))
+                .isPresent();
+    }
+
     private LineMarkerInfo getLineMarkerInfoForComponent(@NotNull PsiElement element) {
         return explainElement(element, new ElementExplain() {
             @Override
             public DocHubNavigationHandler register(String id) {
                 return new DocHubNavigationHandler("component", id);
             }
-        });
+        }, "components");
     }
 
     private LineMarkerInfo getLineMarkerInfoForDocument(@NotNull PsiElement element) {
@@ -96,7 +92,7 @@ public class LineMarkerYaml extends LineMarkerProviderDescriptor {
             public DocHubNavigationHandler register(String id) {
                 return new DocHubNavigationHandler("document", id);
             }
-        });
+        }, "documents");
     }
 
     private LineMarkerInfo getLineMarkerInfoForAspect(@NotNull PsiElement element) {
@@ -105,7 +101,7 @@ public class LineMarkerYaml extends LineMarkerProviderDescriptor {
             public DocHubNavigationHandler register(String id) {
                 return new DocHubNavigationHandler("aspect", id);
             }
-        });
+        }, "aspects");
     }
 
     private LineMarkerInfo getLineMarkerInfoForContext(@NotNull PsiElement element) {
@@ -114,7 +110,7 @@ public class LineMarkerYaml extends LineMarkerProviderDescriptor {
             public DocHubNavigationHandler register(String id) {
                 return new DocHubNavigationHandler("context", id);
             }
-        });
+        }, "contexts");
     }
 
     @Override
